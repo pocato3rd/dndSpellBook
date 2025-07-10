@@ -1,21 +1,15 @@
-import requests
 import re
 import glob
 import os, pathlib
 import math
-import time
 from io import StringIO
 
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
-import html5lib
-import lxml
-# import odfpy
 
 from docx import Document
 from docx.oxml import OxmlElement
-from docx.oxml import parse_xml
 from docx.oxml.ns import qn
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -592,7 +586,6 @@ def create_spell_card(spell_details, output_loc):
 
     # with open(os.path.join(ROOT_DIR,"logs/document.xml"), "w", encoding='utf-8') as f:
     #     f.write(document.element.xml)
-
     document.save(output_loc)
 
 def parse_input_xlsx(input_xlsx):
