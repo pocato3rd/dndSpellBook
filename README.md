@@ -1,4 +1,4 @@
-# SpellScraper
+# SpellBook
 
 View markdown with: [markdownlivepreview.com](https://markdownlivepreview.com/)
 
