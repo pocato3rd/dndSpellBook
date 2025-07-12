@@ -28,40 +28,91 @@ log.addHandler(cons_handler)
 
 
 ROOT_DIR = pathlib.Path(__file__).parent.parent.resolve()
-SCHOOL_COLORS = {
-    "abjuration": "00b0f0",
-    "conjuration": "ed7d31",
-    "divination": "808080",
-    "enchantment": "ff85ff",
-    "evocation": "c00000",
-    "illusion": "7030a0",
-    "necromancy": "00b050",
-    "transmutation": "833c0b"
-}
-CLASSES = ["Artificer", "Bard", "Cleric", "Druid", "Paladin", "Ranger", "Sorcerer", "Warlock", "Wizard"]
-REQUIREMENT_ORDER = ['concentration', 'ritual', 'verbal', 'somatic', 'material_comp']
-TABLE_ROW_LIMIT_PER_PAGE = 19
 
-LINE_LIMITS = {
-    # [1st page line limit, nth page line limit, chars/line]
-    '8': [13, 26, 54],
-    '7': [17, 28, 55],
-    '6.5': [20, 32, 54],
-}
+class Card:
+    SCHOOL_COLORS = {
+        "abjuration": "00b0f0",
+        "conjuration": "ed7d31",
+        "divination": "808080",
+        "enchantment": "ff85ff",
+        "evocation": "c00000",
+        "illusion": "7030a0",
+        "necromancy": "00b050",
+        "transmutation": "833c0b"
+    }
+
+    CLASSES = ["Artificer", "Bard", "Cleric", "Druid", "Paladin", "Ranger", "Sorcerer", "Warlock", "Wizard"]
+    REQUIREMENT_ORDER = ['concentration', 'ritual', 'verbal', 'somatic', 'material_comp']
+    TABLE_ROW_LIMIT_PER_PAGE = 19
+
+    LINE_LIMITS = {
+        # [1st page line limit, nth page line limit, chars/line]
+        '8': [13, 26, 54],
+        '7': [17, 28, 55],
+        '6.5': [20, 32, 54],
+    }
+
+    def __init__(self):
+        # TODO:
+
+        # Initialized Required Spell Details
+        self.name = ""
+        self.level = 0
+
+        self.school = None
+        self.supported_classes = dict()
+
+        self.range = ""
+        self.duration = ""
+        self.casting_time = ""
+        self.material_comp = ""
+
+        # Boolean Toggles
+        self.concentration = False
+        self.ritual = False
+        self.verbal = False
+        self.somatic = False
+        self.material = False
+
+        # Additional inputs
+        self.description = []
+        self.has_tables = False
+        self.source = ""
+        self.short_blurb = ""
+
+        # Start configuring the card based on fixed details.
+        self.color  = Card.SCHOOL_COLORS.get(self.school, "aaaaaa").lower()
+        self.description_len = 0
+
+        for d in self.description: self.description_len += len(d)
+
+
+
+    def save_as_img(self):
+        """
+        Save the card to an image file.
+        """
+        pass
+
+    def save_as_docx(self):
+        """
+        Save the card to a docx file.
+        """
+        pass
 
 def number_of_pages(descriptions, font_size):
     # determine number of lines used by descriptions based on font size
     current_line = 0
     page_num = 0
-    line_limit = LINE_LIMITS[str(font_size)][0]
-    chars_per_line = LINE_LIMITS[str(font_size)][2]
+    line_limit = Card.LINE_LIMITS[str(font_size)][0]
+    chars_per_line = Card.LINE_LIMITS[str(font_size)][2]
 
     for d in descriptions:
         # if we'd exceed the current limit, we need a new page
         if current_line + math.ceil(len(d)/chars_per_line) > line_limit:
             current_line = 0
             page_num += 1
-            line_limit = LINE_LIMITS[str(font_size)][1]
+            line_limit = Card.LINE_LIMITS[str(font_size)][1]
 
         current_line += math.ceil(len(d)/chars_per_line) + 1
 
@@ -242,10 +293,10 @@ def create_spell_card(spell_details, output_loc):
         use_font_size = max_font_with_2 
         
     # The color to set based on the spell
-    use_color = SCHOOL_COLORS[spell_details['school']].lower()
+    use_color = Card.SCHOOL_COLORS[spell_details['school']].lower()
 
     # The color used in the template
-    look_for_color = SCHOOL_COLORS['conjuration'].lower()
+    look_for_color = Card.SCHOOL_COLORS['conjuration'].lower()
 
     # Get the template docx
     document = Document(os.path.join(ROOT_DIR,'resources','template_cards','TEMPLATE.docx'))
@@ -276,7 +327,7 @@ def create_spell_card(spell_details, output_loc):
     # Update the spell requirement images
     for i in [0,1,2,3,4]:
         inline_elem = document.inline_shapes[i]
-        req_type = REQUIREMENT_ORDER[i]
+        req_type = Card.REQUIREMENT_ORDER[i]
 
         if req_type == "material_comp":
             material_comp_bool = ("material_comp" in spell_details)
@@ -425,12 +476,12 @@ def create_spell_card(spell_details, output_loc):
     old_paragraphs = description_cell.paragraphs
 
     current_line = 0
-    line_limit = LINE_LIMITS[str(use_font_size)][0]
+    line_limit = Card.LINE_LIMITS[str(use_font_size)][0]
     page_count = 0
 
     for i, d in enumerate(spell_details['description']):
 
-        if current_line + math.ceil(len(d)/LINE_LIMITS[str(use_font_size)][2]) > line_limit:
+        if current_line + math.ceil(len(d)/Card.LINE_LIMITS[str(use_font_size)][2]) > line_limit:
             # this would exceed the page, put it on the next one
             for p in old_paragraphs: description_cell._tc.remove(p._element)
             
@@ -463,7 +514,7 @@ def create_spell_card(spell_details, output_loc):
 
             # go to next page, increase current_limit
             current_line = 0
-            line_limit = LINE_LIMITS[str(use_font_size)][1]     
+            line_limit = Card.LINE_LIMITS[str(use_font_size)][1]     
 
         # Time to actually add the description paragraph
         # First remove <p> and </p> tags:
@@ -520,7 +571,7 @@ def create_spell_card(spell_details, output_loc):
         # if i < len(spell_details['description'])-1:
         description_cell.add_paragraph(' ', styles['Line Break'])
 
-        current_line += math.ceil(len(d)/LINE_LIMITS[str(use_font_size)][2]) + 1
+        current_line += math.ceil(len(d)/Card.LINE_LIMITS[str(use_font_size)][2]) + 1
 
     for p in old_paragraphs:
         description_cell._tc.remove(p._element)
@@ -548,7 +599,7 @@ def create_spell_card(spell_details, output_loc):
                 spell_name_elem.text = f'{spell_details["name"]} (Part {page_count+1})'
                 document.tables[1].rows[-1].height = Inches(3.05)
 
-            elif (total_rows + row_count <= TABLE_ROW_LIMIT_PER_PAGE) and i > 0:
+            elif (total_rows + row_count <= Card.TABLE_ROW_LIMIT_PER_PAGE) and i > 0:
                 # no need to make an additional page
                 cell = document.tables[-1].rows[-1].cells[0]
                 pass
@@ -619,7 +670,7 @@ def create_filtered_cards(df, output_dir):
             "short_blurb": str(row["Blurb"])
         }
 
-        for c in CLASSES:
+        for c in Card.CLASSES:
             class_applicability = str(row[c])
             if class_applicability.lower() in ['nan', 'no']:
                 continue

@@ -3,11 +3,9 @@ import pandas as pd
 import logging
 
 from scripts.customLogFormatter import CustomFormatter
-from scripts.create_cards import create_filtered_cards
-
+from scripts.create_cards import create_filtered_cards, Card
 
 ROOT_DIR = pathlib.Path(__file__).parent.resolve()
-CLASSES = ["Artificer", "Bard", "Cleric", "Druid", "Paladin", "Ranger", "Sorcerer", "Warlock", "Wizard"]
 
 log = logging.getLogger("generate_cards.py")
 log.setLevel(logging.INFO)
@@ -27,7 +25,7 @@ def main():
     )
     parser.add_argument("-c", "--classes", type=str,
             metavar='class_list', default=None, required=False,
-            help=f"(Optional) Comma-separated list of classes to filter on, overrides 'Generate Card' filter. ANDs with level list. Supported classes: {CLASSES}"
+            help=f"(Optional) Comma-separated list of classes to filter on, overrides 'Generate Card' filter. ANDs with level list. Supported classes: {Card.CLASSES}"
     )
     parser.add_argument("-l", "--levels", type=str,
         metavar='level_list', default=None, required=False,
@@ -52,8 +50,8 @@ def main():
         all_classes_filtered = None
         for c in args.classes.split(','):
             use_c = c.capitalize()
-            if use_c not in CLASSES: 
-                log.error(f"Class '{use_c}' could not be parsed. Skipping. Available classes are:\n\t{CLASSES}")
+            if use_c not in Card.CLASSES: 
+                log.error(f"Class '{use_c}' could not be parsed. Skipping. Available classes are:\n\t{Card.CLASSES}")
             else:
                 class_filter = (df[use_c] == "Yes") | (df[use_c] == "Optional")
                 
