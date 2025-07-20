@@ -15,6 +15,8 @@ from docx.oxml.ns import qn
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Pt, Mm, Inches, RGBColor
+from docx.table import _Cell, Table
+from docx.styles import styles as docx_styles
 
 # Imports to work with images
 from PIL import Image, ImageDraw, ImageFont
@@ -61,7 +63,7 @@ class Card:
         '6.5': [20, 32, 54],
     }
 
-    def __init__(self, spell_row, output_dir="./outputs"):
+    def __init__(self, spell_row: pd.Series, output_dir:str="./outputs") -> None:
         self.output_dir = output_dir
 
         # Initialized Required Spell Details
@@ -106,70 +108,77 @@ class Card:
         for d in self.description: self.description_len += len(d)
 
 
-    # Getters
-    def get_has_tables(self):
+    # Getter methods
+    def get_has_tables(self) -> bool:
         return self.has_tables
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.name
 
-    def get_level(self):
+    def get_level(self) -> str:
         return self.level
     
-    def get_color(self):
+    def get_color(self) -> str:
+        """
+        Returns hex code for the school of magic's color. e.g. "00b050"
+        """
         return self.color
     
-    def get_classes(self):
+    def get_classes(self) -> dict:
+        """
+        Return dict of (lower-case) classes in Card.CLASSES as key if applicable,
+        and whether the spell is weakly (optional) or strongly associated with the class.
+        """
         return self.supported_classes
 
-    def get_class_info(self, class_name):
+    def get_class_info(self, class_name) -> str:
         return self.supported_classes.get(class_name, '').lower()
     
-    def get_range(self):
+    def get_range(self) -> str:
         return self.range
     
-    def get_duration(self):
+    def get_duration(self) -> str:
         return self.duration
     
-    def get_casting_time(self):
+    def get_casting_time(self) -> str:
         return self.casting_time
     
-    def get_description(self):
+    def get_description(self) -> list[str]:
         return self.description
 
-    def get_material_components(self):
+    def get_material_components(self) -> str:
         if self.material_comp is None:
             return ''
         else: 
             return self.material_comp
         
-    def get_blurb(self):
+    def get_blurb(self) -> str:
         if self.short_blurb is None:
             return ''
         else:
             return self.short_blurb
 
-    # setters
-    def set_material_components(self, material_comp_text):
+    # Setter methods
+    def set_material_components(self, material_comp_text: str) -> None:
         if type(material_comp_text) in [np.float64, float] and np.isnan(material_comp_text):
             self.material_comp = None
         else:
             self.material_comp = material_comp_text
 
-    def set_blurb(self, blurb_text):
+    def set_blurb(self, blurb_text: str) -> None:
         if type(blurb_text) in [np.float64, float] and np.isnan(blurb_text):
             self.short_blurb = None
         else:
             self.short_blurb = blurb_text
 
     # Saving Methods
-    def save_as_img(self):
+    def save_as_img(self) -> None:
         """
         Save the card to an image file.
         """
         pass
 
-    def save_as_docx(self):
+    def save_as_docx(self) -> None:
         """
         Save the card to a docx file.
         """
@@ -521,9 +530,8 @@ class Card:
         document.save(self.get_output_location(docx=True))
 
 
-
     # Construction helpers
-    def number_of_pages(self, font_size):
+    def number_of_pages(self, font_size: float) -> int:
         # determine number of lines used by descriptions based on the font size
         current_line = 0
         page_num = 0
@@ -542,8 +550,12 @@ class Card:
         # +1 due to zero index
         return page_num + 1        
     
-    def get_font_size_and_page_count(self):
-
+    def get_font_size_and_page_count(self) -> tuple[float, int]:
+        """
+        Use the Card.SUPPORTED_FONT_SIZES and length of the card description to 
+        determine which font_size (float) and page number works best
+        
+        """
         max_font_with_2_pages = Card.MAX_FONT_WITH_2_PAGES
 
         for use_font_size in Card.SUPPORTED_FONT_SIZES:
@@ -575,7 +587,7 @@ class Card:
         return to_return
 
 
-def number_of_pages(descriptions, font_size):
+def number_of_pages(descriptions: list[str], font_size: float) -> int:
     # determine number of lines used by descriptions based on font size
     current_line = 0
     page_num = 0
@@ -595,15 +607,22 @@ def number_of_pages(descriptions, font_size):
     return page_num + 1
 
 
-def parse_html_table_into_py(table_html):
-    # Parse the saved html table into usable Python data structures
-    # Returns 
-    #   * table_headers, (2d) ndarray of bools, access by [row, col]
-    #   * table_contents, 2d nested lists of strings, access by [row][col]
-    #   * table_row_span, (2d) ndarray of ints, access by [row, col]
-    #   * table_col_span, (2d) ndarray of ints, access by [row, col]
+def parse_html_table_into_py(table_html: str) -> tuple[np.ndarray[bool, bool], list[str], np.ndarray[int, int], np.ndarray[int, int]]:
+    """
+    Parse the saved html table file into usable Python data structures
+    
+    Parameters:
+        table_html (str): The location of the HTML file containing the table to parse.
 
-    # read the html
+    Returns:
+        (tuple): A 4-length tuple containing (table_headers, table_contents, table_row_span, table_col_span) where
+            * `table_headers (np.ndarray[bool, bool])`: 2d, access by [row, col]. Provides whether or not the location should be treated as header text
+            * `table_contents (list[list[str]])`: 2d, access by [row][col]. Contents of location.
+            * `table_row_span (np.ndarray[int, int])`: 2d, access by [row, col]. Provides how many rows the location should span (merge)
+            * `table_col_span, (np.ndarray[int, int])`: 2d, access by [row, col]. Provides how many columns the location should span (merge)
+    """
+
+    # read in the html
     with open(table_html, 'r', encoding='utf-8') as f:
         soup = BeautifulSoup(f.read(), "html.parser")
 
@@ -670,7 +689,19 @@ def parse_html_table_into_py(table_html):
 
     return table_headers, table_contents, table_row_span, table_col_span
 
-def add_table_into_docx(py_tables, parent, styles, school_color):    
+def add_table_into_docx(py_tables: tuple, parent: _Cell, styles: docx_styles.Styles, school_color: str) -> Table:
+    """
+    Insert and return a table represented by py_tables to the provided (parent) cell of the document, following the document styles and school color
+
+    Parameters:
+        py_tables (tuple): Output of `parse_html_table_into_py`
+        parent (docx.table._Cell): The location in the document to insert the table as a child of.
+        styles (Document.styles): the styles object containing font styles specified for at least 'Table Grid' and 'Table Description'.
+        school_color (str): The hex-code color to use. Either the three-digit or six-digit code without the leading hex indicator. e.g. '0faacc'
+
+    Returns:
+        (docx.table.Table): The constructed table object for later reference. This function already inserts the table into the document, so the return can be ignored if not modifying the table later.
+    """    
     
     # Now that we have the headers, span locations, merging style, and innerHtmls
     # Create the docx table cell by cell
@@ -749,7 +780,7 @@ def add_table_into_docx(py_tables, parent, styles, school_color):
     return docx_table
 
 
-def create_spell_card(spell_details, output_loc):
+def create_spell_card(spell_details: dict, output_loc: str) -> None:
 
     description_char_count = 0
     for d in spell_details['description']: description_char_count += len(d)
@@ -1114,12 +1145,12 @@ def create_spell_card(spell_details, output_loc):
     #     f.write(document.element.xml)
     document.save(output_loc)
 
-def parse_input_xlsx(input_xlsx):
+def parse_input_xlsx(input_xlsx: str) -> pd.DataFrame:
     df = pd.read_excel(input_xlsx, sheet_name='Sheet1')
     filtered_df = df[df['Generate Card']]
     return filtered_df
 
-def create_filtered_cards(df, output_dir):
+def create_filtered_cards(df: pd.DataFrame, output_dir: str) -> None:
     count_created = 1
     total_count = df.shape[0]
     spells_with_tables = set()
@@ -1201,7 +1232,7 @@ if __name__ == "__main__":
     spells_df = parse_input_xlsx("spell_list_inputs.xlsx")
     # filtered_df = spells_df.iloc[19]
 
-    # newCard = Card(filtered_df, "outputs/test2")
+    # newCard = Card(filtered_df, "output/test2")
 
     # log.info(newCard.get_output_location(docx=True))
     # log.info(newCard.get_color())
@@ -1211,6 +1242,6 @@ if __name__ == "__main__":
     filtered_df = spells_df.iloc[19:65]
     print(len(filtered_df))
 
-    create_filtered_cards(filtered_df, output_dir="outputs/test")
+    create_filtered_cards(filtered_df, output_dir="output/test")
 
     
