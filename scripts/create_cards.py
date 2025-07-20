@@ -1,8 +1,12 @@
 import re
 import glob
-import os, pathlib
+import os, pathlib, sys
 import math
 from io import StringIO
+
+from pathlib import Path
+# add project root to path so that relative scripts can be used whenever this file is called.
+sys.path.append(str(Path(__file__).parent.parent))
 
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -21,8 +25,9 @@ from docx.styles import styles as docx_styles
 # Imports to work with images
 from PIL import Image, ImageDraw, ImageFont
 
+# Rich logging
 import logging
-from customLogFormatter import CustomFormatter
+from scripts.customLogFormatter import CustomFormatter
 
 log = logging.getLogger("create_cards.py")
 log.setLevel(logging.INFO)
@@ -176,7 +181,46 @@ class Card:
         """
         Save the card to an image file.
         """
-        pass
+
+        # Initialize the card image
+        img = Image.new(mode='RGB', size=(1080,1080), color='white')
+
+        # Create a Draw object for the img
+        # /Windows/Fonts/*.ttf
+        normal_font = ImageFont.truetype("times.ttf", 24)
+        bold_font = ImageFont.truetype("timesbd.ttf", 24)
+        bold_italics_font = ImageFont.truetype("timesbi.ttf", 24)
+        italics_font = ImageFont.truetype("timesi.ttf", 24)
+        draw = ImageDraw.Draw(img)
+        
+        draw.rectangle(xy=(50, 50, 1080/2, 1080-50), fill=None, outline=(255,0,0), width=3)
+        draw.text(xy=(1080/2+25, 100),
+                   text="Hello, World!",
+                   font=normal_font,
+                   fill=(0,0,0)
+        )
+
+        draw.text(xy=(1080/2+25, 150),
+                   text="Hello, World!",
+                   font=bold_font,
+                   fill=(150,0,0)
+        )
+        draw.text(xy=(1080/2+25, 200),
+                   text="Hello, World!",
+                   font=italics_font,
+                   fill=(0,150,0)
+        )
+        draw.text(xy=(1080/2+25, 250),
+                   text="Hello, World!",
+                   font=bold_italics_font,
+                   fill=(0,0,150)
+        )
+
+        # TODO: change to save
+        img.show()
+
+
+
 
     def save_as_docx(self) -> None:
         """
@@ -586,25 +630,6 @@ class Card:
 
         return to_return
 
-
-def number_of_pages(descriptions: list[str], font_size: float) -> int:
-    # determine number of lines used by descriptions based on font size
-    current_line = 0
-    page_num = 0
-    line_limit = Card.LINE_LIMITS[str(font_size)][0]
-    chars_per_line = Card.LINE_LIMITS[str(font_size)][2]
-
-    for d in descriptions:
-        # if we'd exceed the current limit, we need a new page
-        if current_line + math.ceil(len(d)/chars_per_line) > line_limit:
-            current_line = 0
-            page_num += 1
-            line_limit = Card.LINE_LIMITS[str(font_size)][1]
-
-        current_line += math.ceil(len(d)/chars_per_line) + 1
-
-    # +1 due to zero index
-    return page_num + 1
 
 
 def parse_html_table_into_py(table_html: str) -> tuple[np.ndarray[bool, bool], list[str], np.ndarray[int, int], np.ndarray[int, int]]:
@@ -1230,18 +1255,18 @@ def create_filtered_cards(df: pd.DataFrame, output_dir: str) -> None:
 if __name__ == "__main__":
     # Testing
     spells_df = parse_input_xlsx("spell_list_inputs.xlsx")
-    # filtered_df = spells_df.iloc[19]
+    filtered_df = spells_df.iloc[19]
 
-    # newCard = Card(filtered_df, "output/test2")
+    newCard = Card(filtered_df, "output/test2")
 
-    # log.info(newCard.get_output_location(docx=True))
-    # log.info(newCard.get_color())
+    log.info(newCard.get_output_location(docx=True))
+    log.info(newCard.get_color())
 
-    # newCard.save_as_docx()
+    newCard.save_as_img()
 
-    filtered_df = spells_df.iloc[19:65]
-    print(len(filtered_df))
+    # filtered_df = spells_df.iloc[19:65]
+    # print(len(filtered_df))
 
-    create_filtered_cards(filtered_df, output_dir="output/test")
+    # create_filtered_cards(filtered_df, output_dir="output/test")
 
     
