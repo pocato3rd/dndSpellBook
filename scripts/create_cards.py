@@ -306,7 +306,6 @@ class Card:
         cur_y = 3*margin+top_padding
         for c in Card.CLASSES:
             applicability = self.get_class_info(c)
-            log.debug(f"Class {c}: {applicability}")
             if applicability == "yes":
                 # standard for class
                 use_font = class_font
@@ -331,12 +330,18 @@ class Card:
         avg_char_width = draw.textlength('n', normal_font)
         max_chars_per_line = int(max_width_pixels / avg_char_width)
 
+
+        log.debug(f"Forcing max characters per line")
+        max_chars_per_line = 68
         log.debug(f"Max characters per line: {max_chars_per_line}")
 
         cur_y = height*0.40+2*margin+top_padding
         for paragraph in self.get_description():
             use_paragraph = paragraph.replace("<p>", "")
             use_paragraph = use_paragraph.replace("</p>", "")
+
+            log.debug(f"Stripping bold and italics from the paragraph")
+            use_paragraph = use_paragraph.replace("<strong>", "").replace("</strong>", "").replace("<em>", "").replace("</em>", "")
 
             wrapped_lines = textwrap.wrap(use_paragraph, width=max_chars_per_line)
             text_to_draw = "\n".join(wrapped_lines)
@@ -1333,7 +1338,7 @@ def create_filtered_cards(df: pd.DataFrame, output_dir: str) -> None:
     """
     Provided the spells to generate, create those cards in the output directory with level subdirectories.
     """
-    count_created = 1
+    count_created = 0
     total_count = df.shape[0]
     spells_with_tables = set()
 
@@ -1412,14 +1417,15 @@ def create_filtered_cards(df: pd.DataFrame, output_dir: str) -> None:
 if __name__ == "__main__":
     # Testing
     spells_df = parse_input_xlsx("spell_list_inputs.xlsx")
-    filtered_df = spells_df.iloc[19]
 
-    newCard = Card(filtered_df, "output/test2")
+    filtered_df = spells_df.iloc[19:23,:]
 
-    log.info(newCard.get_output_location(docx=True))
-    log.info(newCard.get_color())
+    for _, row in filtered_df.iterrows():
 
-    newCard.save_as_img()
+        newCard = Card(row, "output/test2")
+
+        log.info(newCard.get_output_location(docx=False))
+        newCard.save_as_img()
 
     # filtered_df = spells_df.iloc[19:65]
     # print(len(filtered_df))
