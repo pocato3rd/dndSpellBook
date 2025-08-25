@@ -25,15 +25,17 @@ from docx.styles import styles as docx_styles
 # Imports to work with images
 from PIL import Image, ImageDraw, ImageFont
 
+import textwrap
+
 # Rich logging
 import logging
 from scripts.customLogFormatter import CustomFormatter
 
 log = logging.getLogger("create_cards.py")
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 cons_handler = logging.StreamHandler()
-cons_handler.setLevel(logging.INFO)
+cons_handler.setLevel(logging.DEBUG)
 cons_handler.setFormatter(CustomFormatter())
 log.addHandler(cons_handler)
 
@@ -136,7 +138,7 @@ class Card:
         """
         return self.supported_classes
 
-    def get_class_info(self, class_name) -> str:
+    def get_class_info(self, class_name: str) -> str:
         return self.supported_classes.get(class_name, '').lower()
     
     def get_range(self) -> str:
@@ -149,6 +151,11 @@ class Card:
         return self.casting_time
     
     def get_description(self) -> list[str]:
+        """
+        Return a list of strings where each string is a paragraph. 
+
+        Does not handle text wrapping and is represented as HTML
+        """
         return self.description
 
     def get_material_components(self) -> str:
@@ -180,41 +187,187 @@ class Card:
     def save_as_img(self) -> None:
         """
         Save the card to an image file.
+
+        TODO:
+            [ ] - Handle optional material component
+            [ ] - Handle multiple pages
+            [ ] - Handle strong/italic HTML tags
+            [ ] - Handle optional blurb
+            [ ] - Handle insertion of tables
+            [ ] - Swap logging level back to info
         """
+        width = 750
+        height = 1050
+        margin = 30
+        left_padding = 5
+        right_padding = 5
+        top_padding = 10
+        class_top_padding = 5
+
+        component_img_size = 55
+
+        normal_font_size = 24
+        class_font_size = 20
 
         # Initialize the card image
-        img = Image.new(mode='RGB', size=(1080,1080), color='white')
+        school_color = '#'+self.get_color() # hex
+
+        # Make the card and color the back based on the school
+        img = Image.new(mode='RGBA', size=(width,height), color=school_color)
 
         # Create a Draw object for the img
         # /Windows/Fonts/*.ttf
-        normal_font = ImageFont.truetype("times.ttf", 24)
-        bold_font = ImageFont.truetype("timesbd.ttf", 24)
-        bold_italics_font = ImageFont.truetype("timesbi.ttf", 24)
-        italics_font = ImageFont.truetype("timesi.ttf", 24)
-        draw = ImageDraw.Draw(img)
-        
-        draw.rectangle(xy=(50, 50, 1080/2, 1080-50), fill=None, outline=(255,0,0), width=3)
-        draw.text(xy=(1080/2+25, 100),
-                   text="Hello, World!",
-                   font=normal_font,
-                   fill=(0,0,0)
-        )
+        normal_font = ImageFont.truetype("times.ttf", normal_font_size)
+        class_font = ImageFont.truetype("times.ttf", class_font_size)
+        class_font_italic = ImageFont.truetype("timesi.ttf", class_font_size)
+        bold_font = ImageFont.truetype("timesbd.ttf", normal_font_size)
+        bold_italics_font = ImageFont.truetype("timesbi.ttf", normal_font_size)
+        italics_font = ImageFont.truetype("timesi.ttf", normal_font_size)
 
-        draw.text(xy=(1080/2+25, 150),
-                   text="Hello, World!",
-                   font=bold_font,
-                   fill=(150,0,0)
-        )
-        draw.text(xy=(1080/2+25, 200),
-                   text="Hello, World!",
-                   font=italics_font,
-                   fill=(0,150,0)
-        )
-        draw.text(xy=(1080/2+25, 250),
-                   text="Hello, World!",
-                   font=bold_italics_font,
-                   fill=(0,0,150)
-        )
+        title_font = ImageFont.truetype("timesbd.ttf", 48)
+
+        draw = ImageDraw.Draw(img)
+      
+        # top box
+        draw.rectangle(xy=(margin, 3*margin, width-margin, height*0.40), fill='white', outline=None, width=1)
+        
+        # description box
+        draw.rectangle(xy=(margin, height*0.40+2*margin, width-margin, height-margin), fill='white', outline=None, width=1)
+
+        # spell name
+        draw.text(xy=(margin, margin),
+                  text=self.get_name(),
+                  font=title_font,
+                  fill=(255,255,255))
+        # spell level
+        draw.text(xy=(width-margin-draw.textlength(self.get_level(), title_font), margin),
+                  text=self.get_level(),
+                  font=title_font,
+                  fill=(255,255,255))
+        
+        # range 
+        draw.text(xy=(margin+left_padding, 3*margin+top_padding),
+                  text="Range:",
+                  font=bold_font,
+                  fill=(0,0,0))
+
+        # range value
+        draw.text(xy=(margin+left_padding+draw.textlength("Range: ", bold_font), 3*margin+top_padding),
+                  text=self.get_range(),
+                  font=normal_font,
+                  fill=(0,0,0))
+
+
+        # duration
+        draw.text(xy=(margin+left_padding, 3*margin+top_padding+normal_font_size+top_padding),
+            text="Duration:",
+            font=bold_font,
+            fill=(0,0,0))
+
+        # duration value
+        draw.text(xy=(margin+left_padding+draw.textlength("Duration: ", bold_font), 3*margin+top_padding+normal_font_size+top_padding),
+            text=self.get_duration(),
+            font=normal_font,
+            fill=(0,0,0))
+
+        # casting time
+        draw.text(xy=(margin+left_padding, 3*margin+top_padding+normal_font_size+top_padding+normal_font_size+top_padding),
+            text="Casting Time:",
+            font=bold_font,
+            fill=(0,0,0))
+
+        # casting time value
+        draw.text(xy=(margin+left_padding+draw.textlength("Casting Time: ", bold_font), 3*margin+top_padding+normal_font_size+top_padding+normal_font_size+top_padding),
+            text=self.get_casting_time(),
+            font=normal_font,
+            fill=(0,0,0))
+
+        # spell component images
+        for i in range(len(Card.REQUIREMENT_ORDER)):
+            req_type = Card.REQUIREMENT_ORDER[i]
+
+            if req_type == "material_comp":
+                material_comp_bool = self.material_comp is not None
+                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(material_comp_bool).lower()}.png'))
+            elif req_type == "concentration":
+                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.concentration).lower()}.png'))
+            elif req_type == "ritual":
+                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.ritual).lower()}.png'))
+            elif req_type == "verbal":
+                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.verbal).lower()}.png'))
+            elif req_type == "somatic":
+                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.somatic).lower()}.png'))
+            
+            # resize the loaded image to better fit the card, then paste it onto the current card with some margining between
+            cur_image = cur_image.resize((component_img_size, component_img_size))
+            img.paste(cur_image, (margin + i*int(1.1*component_img_size), int(height*0.20)), cur_image)
+
+        # class applicability
+        cur_y = 3*margin+top_padding
+        for c in Card.CLASSES:
+            applicability = self.get_class_info(c)
+            log.debug(f"Class {c}: {applicability}")
+            if applicability == "yes":
+                # standard for class
+                use_font = class_font
+                use_fill = school_color
+            elif applicability == "optional":
+                # optional for class
+                use_font = class_font_italic
+                use_fill = school_color
+            else:
+                # not applicable
+                use_font = class_font
+                use_fill = 'black'
+
+            draw.text(xy=(width-margin-right_padding-draw.textlength(c, use_font), cur_y),
+                      text=c,
+                      font=use_font,
+                      fill=use_fill)
+            cur_y += class_font_size+class_top_padding
+
+        # write description
+        max_width_pixels = width # - 2*margin - left_padding - right_padding
+        avg_char_width = draw.textlength('n', normal_font)
+        max_chars_per_line = int(max_width_pixels / avg_char_width)
+
+        log.debug(f"Max characters per line: {max_chars_per_line}")
+
+        cur_y = height*0.40+2*margin+top_padding
+        for paragraph in self.get_description():
+            use_paragraph = paragraph.replace("<p>", "")
+            use_paragraph = use_paragraph.replace("</p>", "")
+
+            wrapped_lines = textwrap.wrap(use_paragraph, width=max_chars_per_line)
+            text_to_draw = "\n".join(wrapped_lines)
+
+            draw.multiline_text(xy=(margin+left_padding, cur_y),
+                                text=text_to_draw,
+                                font=normal_font,
+                                fill='black')
+            cur_y += normal_font_size*len(wrapped_lines) + 2*top_padding
+
+        # random testing
+        # draw.text(xy=(1080/2+25, 100),
+        #            text="Hello, World!\nfoo bar",
+        #            font=normal_font,
+        #            fill=(0,0,0)
+        # )
+        # draw.text(xy=(1080/2+25, 150),
+        #            text="Hello, World!",
+        #            font=bold_font,
+        #            fill=(150,0,0)
+        # )
+        # draw.text(xy=(1080/2+25, 200),
+        #            text="Hello, World!",
+        #            font=italics_font,
+        #            fill=(0,150,0)
+        # )
+        # draw.text(xy=(1080/2+25, 250),
+        #            text="Hello, World!",
+        #            font=bold_italics_font,
+        #            fill=(0,0,150)
+        # )
 
         # TODO: change to save
         img.show()
@@ -806,6 +959,7 @@ def add_table_into_docx(py_tables: tuple, parent: _Cell, styles: docx_styles.Sty
 
 
 def create_spell_card(spell_details: dict, output_loc: str) -> None:
+    # Creates docx spell card
 
     description_char_count = 0
     for d in spell_details['description']: description_char_count += len(d)
@@ -1176,6 +1330,9 @@ def parse_input_xlsx(input_xlsx: str) -> pd.DataFrame:
     return filtered_df
 
 def create_filtered_cards(df: pd.DataFrame, output_dir: str) -> None:
+    """
+    Provided the spells to generate, create those cards in the output directory with level subdirectories.
+    """
     count_created = 1
     total_count = df.shape[0]
     spells_with_tables = set()
