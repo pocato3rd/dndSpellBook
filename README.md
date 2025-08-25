@@ -2,7 +2,7 @@
 
 View markdown with: [markdownlivepreview.com](https://markdownlivepreview.com/)
 
-This tool will produce `.docx` files for each given DND 5E spell. The data will be pulled from the provided `--input_file` (most likely `./spell_list_inputs.xlsx`) which was produced by scraping spells from ["https://dnd5e.wikidot.com"]("https://dnd5e.wikidot.com")
+This tool will produce `.docx` files for each given DND 5E spell. The data will be pulled from the provided `--input_file` (most likely `./spell_list_inputs.csv`) which was produced by scraping spells from ["https://dnd5e.wikidot.com"]("https://dnd5e.wikidot.com")
 
 The output cards will be saved by spell level in `--output_dir`, defaulting to `./output/cards`.
 
@@ -44,7 +44,7 @@ Run the script to create cards by:
 
 ### Help usage:
 
-```bash
+```
 usage: generate_cards.py [-h] [-p] [-c class_list] [-l level_list] [-i input_file] [-o output_dir]
 
 A DND 5E spell card generator tool!
@@ -64,10 +64,10 @@ options:
                         overrides 'Generate Card' filter. ANDs with class list. 
                         Supported levels: 0 through 9, inclusive
   -i input_file, --input_file input_file
-                        (Optional) The .xlsx or .ods input file to pull spell 
+                        (Optional) The .csv, .xlsx, .ods input file to pull spell 
                         details from. If --classes and --levels are not specified
                         here, the 'Generate Cards' column will be used to filter on. 
-                        Defaults to './spell_list_inputs.xlsx'
+                        Defaults to './spell_list_inputs.csv'
   -o output_dir, --output_dir output_dir
                         (Optional) The output directory to put cards into. 
                         Cards will be further organized by level directories. 
@@ -89,10 +89,10 @@ Generate all 1st level spells that are either Paladin or Artificer:
 ./venv/Scripts/python.exe generate_cards.py --levels 1 --classes Artificer,Paladin
 ```
 
-Generate spells based on the `=TRUE()` values of 'Generate Card' in `./spell_list_inputs.xlsx`. Place them in output directory `./output/my_character_cards`:
+Generate spells based on the `=TRUE()` values of 'Generate Card' in `./spell_list_inputs.csv`. Place them in output directory `./output/my_character_cards`:
 
 ```bash
-./venv/Scripts/python.exe generate_cards.py --input_file ./spell_list_inputs.xlsx --output_dir ./output/my_character_cards
+./venv/Scripts/python.exe generate_cards.py --input_file ./spell_list_inputs.csv --output_dir ./output/my_character_cards
 ```
 
 ## Warning
