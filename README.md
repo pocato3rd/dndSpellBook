@@ -2,9 +2,11 @@
 
 View markdown with: [markdownlivepreview.com](https://markdownlivepreview.com/)
 
-This tool will produce `.docx` files for each given DND 5E spell. The data will be pulled from the provided `--input_file` (most likely `./spell_list_inputs.csv`) which was produced by scraping spells from ["https://dnd5e.wikidot.com"]("https://dnd5e.wikidot.com")
+This tool will produce `.docx` files for each given DND 5E spell. The data will be pulled from the provided `--input_file` (most likely `./spell_list_inputs.csv`) which was produced by scraping spells from [https://dnd5e.wikidot.com](https://dnd5e.wikidot.com).
 
 The output cards will be saved by spell level in `--output_dir`, defaulting to `./output/cards`.
+
+It is strongly recommended that Microsoft Word is used to open the `.docx` files for proper formatting (and printing). Exporting to `.png` is in work ([Issue #2](https://github.com/pocato3rd/dndSpellBook/issues/2) in this repository)
 
 ## Environment
 
@@ -12,15 +14,27 @@ This tool requires Python 3 installed with a set of required modules.
 
 Python can be downloaded from [https://www.python.org/downloads](https://www.python.org/downloads/)
 
-Once Python is installed, a [virtual environment](https://docs.python.org/3/library/venv.html) can be setup in the directory. Navigate to the SpellScraper directory in a terminal, then:
+Once Python is installed, a [virtual environment](https://docs.python.org/3/library/venv.html) can be setup in the directory. Clone this repository then navigate to its directory in a terminal.
+
+Then create a the virtual environment using:
 
 ```bash
     python -m venv ./venv
 ```
 
-Once the virtual environment is created, modules can be installed by either:
+*A brief note on Windows versus Mac/Linux virtual environments:*
 
-1. `./venv/Scripts/pip3.exe install -r requirements.txt`, or
+* The executable files should be the same between different operating systems but the intermediate folder will be different
+   * Virtual environments generated on Windows will use `./venv/Scripts/`
+   * Those created on Mac/Linux (Posix) will use `./venv/bin/`
+* This will be called out explicitly for the requirement installation and usage but will only the Windows path will be used in the following examples
+
+
+Once the virtual environment is created, modules can be installed by either 1. or 2. below:
+
+1. Call pip directly:
+   * WINDOWS: `./venv/Scripts/pip3.exe install -r requirements.txt`
+   * POSIX: `./venv/bin/pip3.exe install -r requirements.txt`
 2. Activate the venv, then install:
     * Activate:
         * WINDOWS: `./venv/Scripts/activate.bat`
@@ -32,6 +46,8 @@ Then the tool can be run by calling Python directly:
 
 ```bash
     ./venv/Scripts/python.exe generate_cards.py [OPTIONS]
+
+    ./venv/bin/python.exe generate_cards.py [OPTIONS]
 ```
 
 ## Usage
