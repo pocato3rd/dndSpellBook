@@ -1,7 +1,5 @@
 # SpellBook
 
-View markdown with: [markdownlivepreview.com](https://markdownlivepreview.com/)
-
 This tool will produce `.docx` files for each given DND 5E spell. The data will be pulled from the provided `--input_file` (most likely `./spell_list_inputs.csv`) which was produced by scraping spells from [https://dnd5e.wikidot.com](https://dnd5e.wikidot.com).
 
 The output cards will be saved by spell level in `--output_dir`, defaulting to `./output/cards`.
@@ -111,8 +109,30 @@ Generate spells based on the `=TRUE()` values of 'Generate Card' in `./spell_lis
 ./venv/Scripts/python.exe generate_cards.py --input_file ./spell_list_inputs.csv --output_dir ./output/my_character_cards
 ```
 
+### Adding Custom Spells:
+
+Spell generation is via the input spreadsheet file. You can add custom spells simply by adding new rows to the input file.
+
+For the description column, description paragraphs should be separated using the pipe (`|`) character.
+
+HTML tags can be used to add additional formatting. Supported tags:
+
+* Style: bold (`<strong>`) and italicized (`<em>`)
+* Lists: Unordered (`<ul>`), ordered (`<ol>`), and list items (`<li>`)
+
+If your custom spell requires a table (e.g. Chaos Bolt), that table must be defined as an HTML file in `resources/tables` with the file name `<spell name>_<i>.html` where spell name is your input spell name and i is the 0-indexed table (multiple tables per spell are supported, see Control Weather)
+
+If you're not familar with generating HTML tables, you can use a generator website such as [HTML Tables Generator](https://www.tablesgenerator.com/html_tables).
+
+
 ## Warning
 
 Do not manipulate anything in the `resources` folder. That folder is pretty load-bearing
 
+## Licensing
 
+The spell data is sourced from https://dnd5e.wikidot.com which is licensed under the [Creative Commons Attribution-ShareAlike 3.0 License](https://creativecommons.org/licenses/by-sa/3.0/)
+
+The sourced data is minorly modified to fit within a CSV format, and then exported to the generated cards. This is data organization without changing the data content itself.
+
+This repository is not intended for commerical use, only for personal use.
