@@ -34,8 +34,8 @@ def main():
         help=f"(Optional) Comma-separated list of spell levels to filter on, overrides 'Generate Card' filter. ANDs with class list. Supported levels: 0 through 9, inclusive"
     )
     parser.add_argument("-i", "--input_file", type=str, required=False,
-        metavar='input_file', default=os.path.join(ROOT_DIR, 'spell_list_inputs.xlsx'),
-        help=f"(Optional) The .xlsx or .ods input file to pull spell details from. If --classes and --levels are not specified here, the 'Generate Cards' column will be used to filter on. Defaults to '{os.path.join(ROOT_DIR, 'spell_list_inputs.xlsx')}'"
+        metavar='input_file', default=os.path.join(ROOT_DIR, 'spell_list_inputs.csv'),
+        help=f"(Optional) The .csv or .xlsx input file to pull spell details from. If --classes and --levels are not specified here, the 'Generate Cards' column will be used to filter on. Defaults to '{os.path.join(ROOT_DIR, 'spell_list_inputs.csv')}'"
     )
     parser.add_argument("-o", "--output_dir", type=str, required=False,
         metavar='output_dir', default=os.path.join(ROOT_DIR, 'output/cards'),
@@ -45,7 +45,14 @@ def main():
     # parse the arguments from standard input
     args = parser.parse_args()
 
-    df = pd.read_excel(args.input_file)
+    if args.input_file.endswith(".xlsx") or args.input_file.endswith(".ods"):
+        df = pd.read_excel(args.input_file)
+    elif args.input_file.endswith(".csv"):
+        df = pd.read_csv(args.input_file)
+    else:
+        log.error(f"The input file extension was not recognized. Please use a xlsx, ods, or csv file")
+        return
+
     apply_filters = []
      
     if args.classes != None:

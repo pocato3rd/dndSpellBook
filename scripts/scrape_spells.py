@@ -292,7 +292,7 @@ def scrape_all_spell_details(csv_path=os.path.join(ROOT_DIR,'output/queried/spel
         df.loc[index,"Queried"] = True
 
         # sleep for a tiny bit to not send too many requests in a short time
-        sleep_for = 1.5
+        sleep_for = 0.25
         log.debug(f'sleeping for {sleep_for}s')
         time.sleep(sleep_for)
 
@@ -379,6 +379,53 @@ def split_out_components_and_conc(df):
 
     return df
 
+def final_csv_export(df: pd.DataFrame, output_name: str) -> None:
+    """
+    Convert the working CSV DataFrame into a ready-to-use CSV file
+    """
+    # remove Components and Queried columns, we don't care about them now
+    df.drop('Components',axis=1)
+    df.drop('Queried',axis=1)
+
+    # add in two new columns that create_cards.py cares about
+    df['Generate Card'] = True
+    df['Blurb'] = None
+
+    # reorder columns (based on vibes)
+    df = df[['Generate Card',
+             'Spell Name',
+             'School',
+             'Casting Time',
+             'Range',
+             'Duration',
+             'Ritual',
+             'Concentration',
+             'Verbal',
+             'Somatic',
+             'Material',
+             'Level',
+             'Artificer',
+             'Bard',
+             'Cleric',
+             'Druid',
+             'Paladin',
+             'Ranger',
+             'Sorcerer',
+             'Warlock',
+             'Wizard',
+             'Material Component',
+             'Blurb',
+             'Description',
+             'Has Tables',             
+             'Links',
+             'Source',
+             'Notes',
+             'Queried Casting Time',
+             'Queried Range',
+             'Queried Duration'
+        ]]
+    df.to_csv(output_name, index=False)
+
 def convert_to_excel(input_csv, output_name):
     """
     Convert the working CSV file into a ready-to-use Excel (or ODS) file
@@ -452,21 +499,24 @@ def do_all_the_queries(final_output_file):
     log.info(f"Splitting components and concentration")
     df = split_out_components_and_conc(df)
     
-    # make csv file
-    df.to_csv(os.path.join(output_queried_dir,'spell_table_final.csv'), index=False)
+    log.info(f"Producing the final CSV file at: '{final_output_file}'")
+    final_csv_export(df, final_output_file)
 
-    log.info(f"Producing the final Excel file at: '{final_output_file}'")
-    convert_to_excel(os.path.join(output_queried_dir,'spell_table_final.csv'), final_output_file)
+    # # also write as an ods file for open-source file reading
+    # convert_to_excel(os.path.join(output_queried_dir,'spell_table_final.csv'), final_output_file.replace(".xlsx", ".ods"))
 
-    # also write as an ods file for open-source file reading
-    convert_to_excel(os.path.join(output_queried_dir,'spell_table_final.csv'), final_output_file.replace(".xlsx", ".ods"))
+    # log.info(f"Producing the final Excel file at: '{final_output_file}'")
+    # convert_to_excel(os.path.join(output_queried_dir,'spell_table_final.csv'), final_output_file)
+
+    # # also write as an ods file for open-source file reading
+    # convert_to_excel(os.path.join(output_queried_dir,'spell_table_final.csv'), final_output_file.replace(".xlsx", ".ods"))
 
 
 if __name__ == "__main__":
-    excel_output_file = os.path.join(ROOT_DIR,'spell_list_inputs.xlsx')
+    csv_output_file = os.path.join(ROOT_DIR,'spell_list_inputs.csv')
 
-    user_input = input(f"This will send many GET requests to the wiki and overwrite excel file '{excel_output_file}' over the course of ~15 minutes.\nDid you mean to start this? (Y/N): ")
+    user_input = input(f"This will send many GET requests to the wiki and overwrite excel file '{csv_output_file}' over the course of ~15 minutes.\nDid you mean to start this? (Y/N): ")
     if user_input.lower()[0] == 'y':
-        do_all_the_queries(excel_output_file)
+        do_all_the_queries(csv_output_file)
     else:
         log.info("Exiting.")
