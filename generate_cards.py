@@ -19,7 +19,7 @@ log.addHandler(cons_handler)
 
 
 def main():
-    parser = argparse.ArgumentParser(description = "A DND 5E spell card generator tool!")
+    parser = argparse.ArgumentParser(description = "A DnD 5E spell card generator tool!")
 
     # defining arguments for parser object
     parser.add_argument("-p", "--preview", required=False, action='store_true',
