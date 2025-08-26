@@ -1,6 +1,6 @@
 # SpellBook
 
-This tool will produce `.docx` files for each given DND 5E spell. The data will be pulled from the provided `--input_file` (most likely `./spell_list_inputs.csv`) which was produced by scraping spells from [https://dnd5e.wikidot.com](https://dnd5e.wikidot.com).
+This tool will produce `.docx` files for each given DnD 5E spell. The data will be pulled from the provided `--input_file` (most likely `./spell_list_inputs.csv`) which was produced by scraping spells from [https://dnd5e.wikidot.com](https://dnd5e.wikidot.com).
 
 The output cards will be saved by spell level in `--output_dir`, defaulting to `./output/cards`.
 
@@ -14,7 +14,7 @@ Python can be downloaded from [https://www.python.org/downloads](https://www.pyt
 
 Once Python is installed, a [virtual environment](https://docs.python.org/3/library/venv.html) can be setup in the directory. Clone this repository then navigate to its directory in a terminal.
 
-Then create a the virtual environment using:
+Then create a virtual environment using:
 
 ```bash
     python -m venv ./venv
@@ -25,8 +25,7 @@ Then create a the virtual environment using:
 * The executable files should be the same between different operating systems but the intermediate folder will be different
    * Virtual environments generated on Windows will use `./venv/Scripts/`
    * Those created on Mac/Linux (Posix) will use `./venv/bin/`
-* This will be called out explicitly for the requirement installation and usage but will only the Windows path will be used in the following examples
-
+* This will be called out explicitly for the requirement installation and usage but only the Windows path will be used in the examples later
 
 Once the virtual environment is created, modules can be installed by either 1. or 2. below:
 
@@ -45,6 +44,8 @@ Then the tool can be run by calling Python directly:
 ```bash
     ./venv/Scripts/python.exe generate_cards.py [OPTIONS]
 
+    or
+
     ./venv/bin/python.exe generate_cards.py [OPTIONS]
 ```
 
@@ -61,7 +62,7 @@ Run the script to create cards by:
 ```
 usage: generate_cards.py [-h] [-p] [-c class_list] [-l level_list] [-i input_file] [-o output_dir]
 
-A DND 5E spell card generator tool!
+A DnD 5E spell card generator tool!
 
 options:
   -h, --help            show this help message and exit
@@ -133,6 +134,6 @@ Do not manipulate anything in the `resources` folder. That folder is pretty load
 
 The spell data is sourced from https://dnd5e.wikidot.com which is licensed under the [Creative Commons Attribution-ShareAlike 3.0 License](https://creativecommons.org/licenses/by-sa/3.0/)
 
-The sourced data is minorly modified to fit within a CSV format, and then exported to the generated cards. This is data organization without changing the data content itself.
+The sourced data is minorly modified to fit within a CSV format, and then exported to the generated cards. The data is reorganized without changing the content itself.
 
 This repository is not intended for commerical use, only for personal use.
