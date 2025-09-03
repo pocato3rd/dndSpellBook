@@ -195,6 +195,7 @@ class Card:
             [ ] - Handle optional blurb
             [ ] - Handle insertion of tables
             [ ] - Swap logging level back to info
+            [ ] - Get rid of the magic numbers
         """
         width = 750
         height = 1050
@@ -208,16 +209,21 @@ class Card:
 
         normal_font_size = 24
         class_font_size = 20
+        # description_font_size, num_pages, page_descriptions = self.get_font_size_and_page_count()
+        description_font_size, num_pages, page_descriptions = self.pil_get_font_size_and_page_count()
+        log.debug(f'Spell {self.get_name()} will have {num_pages} page(s)')
 
         # Initialize the card image
         school_color = '#'+self.get_color() # hex
 
         # Make the card and color the back based on the school
-        img = Image.new(mode='RGBA', size=(width,height), color=school_color)
+        cards_imgs = [Image.new(mode='RGBA', size=(width, height), color=school_color) for _ in range(num_pages)]
+        # img = Image.new(mode='RGBA', size=(width,height), color=school_color)
 
         # Create a Draw object for the img
         # /Windows/Fonts/*.ttf
         normal_font = ImageFont.truetype("times.ttf", normal_font_size)
+        description_font = ImageFont.truetype("times.ttf", description_font_size)
         class_font = ImageFont.truetype("times.ttf", class_font_size)
         class_font_italic = ImageFont.truetype("timesi.ttf", class_font_size)
         bold_font = ImageFont.truetype("timesbd.ttf", normal_font_size)
@@ -226,133 +232,147 @@ class Card:
 
         title_font = ImageFont.truetype("timesbd.ttf", 48)
 
-        draw = ImageDraw.Draw(img)
-      
-        # top box
-        draw.rectangle(xy=(margin, 3*margin, width-margin, height*0.40), fill='white', outline=None, width=1)
-        
-        # description box
-        draw.rectangle(xy=(margin, height*0.40+2*margin, width-margin, height-margin), fill='white', outline=None, width=1)
+        for i, img in enumerate(cards_imgs):
+            # iterate over each "side" of the card
 
-        # spell name
-        draw.text(xy=(margin, margin),
-                  text=self.get_name(),
-                  font=title_font,
-                  fill=(255,255,255))
-        # spell level
-        draw.text(xy=(width-margin-draw.textlength(self.get_level(), title_font), margin),
-                  text=self.get_level(),
-                  font=title_font,
-                  fill=(255,255,255))
-        
-        # range 
-        draw.text(xy=(margin+left_padding, 3*margin+top_padding),
-                  text="Range:",
-                  font=bold_font,
-                  fill=(0,0,0))
+            draw = ImageDraw.Draw(img)
 
-        # range value
-        draw.text(xy=(margin+left_padding+draw.textlength("Range: ", bold_font), 3*margin+top_padding),
-                  text=self.get_range(),
-                  font=normal_font,
-                  fill=(0,0,0))
-
-
-        # duration
-        draw.text(xy=(margin+left_padding, 3*margin+top_padding+normal_font_size+top_padding),
-            text="Duration:",
-            font=bold_font,
-            fill=(0,0,0))
-
-        # duration value
-        draw.text(xy=(margin+left_padding+draw.textlength("Duration: ", bold_font), 3*margin+top_padding+normal_font_size+top_padding),
-            text=self.get_duration(),
-            font=normal_font,
-            fill=(0,0,0))
-
-        # casting time
-        draw.text(xy=(margin+left_padding, 3*margin+top_padding+normal_font_size+top_padding+normal_font_size+top_padding),
-            text="Casting Time:",
-            font=bold_font,
-            fill=(0,0,0))
-
-        # casting time value
-        draw.text(xy=(margin+left_padding+draw.textlength("Casting Time: ", bold_font), 3*margin+top_padding+normal_font_size+top_padding+normal_font_size+top_padding),
-            text=self.get_casting_time(),
-            font=normal_font,
-            fill=(0,0,0))
-
-        # spell component images
-        for i in range(len(Card.REQUIREMENT_ORDER)):
-            req_type = Card.REQUIREMENT_ORDER[i]
-
-            if req_type == "material_comp":
-                material_comp_bool = self.material_comp is not None
-                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(material_comp_bool).lower()}.png'))
-            elif req_type == "concentration":
-                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.concentration).lower()}.png'))
-            elif req_type == "ritual":
-                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.ritual).lower()}.png'))
-            elif req_type == "verbal":
-                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.verbal).lower()}.png'))
-            elif req_type == "somatic":
-                cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.somatic).lower()}.png'))
+            # Header details
+            # spell name
+            draw.text(xy=(margin, margin),
+                    text=self.get_name(),
+                    font=title_font,
+                    fill=(255,255,255))
+            # spell level
+            draw.text(xy=(width-margin-draw.textlength(self.get_level(), title_font), margin),
+                    text=self.get_level(),
+                    font=title_font,
+                    fill=(255,255,255))
             
-            # resize the loaded image to better fit the card, then paste it onto the current card with some margining between
-            cur_image = cur_image.resize((component_img_size, component_img_size))
-            img.paste(cur_image, (margin + i*int(1.1*component_img_size), int(height*0.20)), cur_image)
-
-        # class applicability
-        cur_y = 3*margin+top_padding
-        for c in Card.CLASSES:
-            applicability = self.get_class_info(c)
-            if applicability == "yes":
-                # standard for class
-                use_font = class_font
-                use_fill = school_color
-            elif applicability == "optional":
-                # optional for class
-                use_font = class_font_italic
-                use_fill = school_color
+        
+            if i == 0:
+                # top box
+                draw.rectangle(xy=(margin, 3*margin, width-margin, height*0.40), fill='white', outline=None, width=1)
+                
+                # description box
+                draw.rectangle(xy=(margin, height*0.40+2*margin, width-margin, height-margin), fill='white', outline=None, width=1)
             else:
-                # not applicable
-                use_font = class_font
-                use_fill = 'black'
+                # later cards will only have description boxes
+                draw.rectangle(xy=(margin, 3*margin, width-margin, height-margin), fill='white', outline=None, width=1)
 
-            draw.text(xy=(width-margin-right_padding-draw.textlength(c, use_font), cur_y),
-                      text=c,
-                      font=use_font,
-                      fill=use_fill)
-            cur_y += class_font_size+class_top_padding
+            ## Only First Card
+            if i == 0:
+                # range 
+                draw.text(xy=(margin+left_padding, 3*margin+top_padding),
+                        text="Range:",
+                        font=bold_font,
+                        fill=(0,0,0))
 
-        # write description
-        max_width_pixels = width # - 2*margin - left_padding - right_padding
-        avg_char_width = draw.textlength('n', normal_font)
-        max_chars_per_line = int(max_width_pixels / avg_char_width)
+                # range value
+                draw.text(xy=(margin+left_padding+draw.textlength("Range: ", bold_font), 3*margin+top_padding),
+                        text=self.get_range(),
+                        font=normal_font,
+                        fill=(0,0,0))
 
 
-        log.debug(f"Forcing max characters per line")
-        max_chars_per_line = 68
-        log.debug(f"Max characters per line: {max_chars_per_line}")
+                # duration
+                draw.text(xy=(margin+left_padding, 3*margin+top_padding+normal_font_size+top_padding),
+                    text="Duration:",
+                    font=bold_font,
+                    fill=(0,0,0))
 
-        cur_y = height*0.40+2*margin+top_padding
-        for paragraph in self.get_description():
-            use_paragraph = paragraph.replace("<p>", "")
-            use_paragraph = use_paragraph.replace("</p>", "")
+                # duration value
+                draw.text(xy=(margin+left_padding+draw.textlength("Duration: ", bold_font), 3*margin+top_padding+normal_font_size+top_padding),
+                    text=self.get_duration(),
+                    font=normal_font,
+                    fill=(0,0,0))
 
-            log.debug(f"Stripping bold and italics from the paragraph")
-            use_paragraph = use_paragraph.replace("<strong>", "").replace("</strong>", "").replace("<em>", "").replace("</em>", "")
+                # casting time
+                draw.text(xy=(margin+left_padding, 3*margin+top_padding+normal_font_size+top_padding+normal_font_size+top_padding),
+                    text="Casting Time:",
+                    font=bold_font,
+                    fill=(0,0,0))
 
-            wrapped_lines = textwrap.wrap(use_paragraph, width=max_chars_per_line)
-            text_to_draw = "\n".join(wrapped_lines)
+                # casting time value
+                draw.text(xy=(margin+left_padding+draw.textlength("Casting Time: ", bold_font), 3*margin+top_padding+normal_font_size+top_padding+normal_font_size+top_padding),
+                    text=self.get_casting_time(),
+                    font=normal_font,
+                    fill=(0,0,0))
 
-            draw.multiline_text(xy=(margin+left_padding, cur_y),
-                                text=text_to_draw,
-                                font=normal_font,
-                                fill='black')
-            cur_y += normal_font_size*len(wrapped_lines) + 2*top_padding
+                # spell component images
+                for j in range(len(Card.REQUIREMENT_ORDER)):
+                    req_type = Card.REQUIREMENT_ORDER[j]
 
-        # random testing
+                    if req_type == "material_comp":
+                        material_comp_bool = self.material_comp is not None
+                        cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(material_comp_bool).lower()}.png'))
+                    elif req_type == "concentration":
+                        cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.concentration).lower()}.png'))
+                    elif req_type == "ritual":
+                        cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.ritual).lower()}.png'))
+                    elif req_type == "verbal":
+                        cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.verbal).lower()}.png'))
+                    elif req_type == "somatic":
+                        cur_image = Image.open(os.path.join(ROOT_DIR,f'./resources/images/{req_type}/{str(self.somatic).lower()}.png'))
+                    
+                    # resize the loaded image to better fit the card, then paste it onto the current card with some margining between
+                    cur_image = cur_image.resize((component_img_size, component_img_size))
+                    img.paste(cur_image, (margin + j*int(1.1*component_img_size), int(height*0.20)), cur_image)
+
+                # class applicability
+                cur_y = 3*margin+top_padding
+                for c in Card.CLASSES:
+                    applicability = self.get_class_info(c)
+                    if applicability == "yes":
+                        # standard for class
+                        use_font = class_font
+                        use_fill = school_color
+                    elif applicability == "optional":
+                        # optional for class
+                        use_font = class_font_italic
+                        use_fill = school_color
+                    else:
+                        # not applicable
+                        use_font = class_font
+                        use_fill = 'black'
+
+                    draw.text(xy=(width-margin-right_padding-draw.textlength(c, use_font), cur_y),
+                            text=c,
+                            font=use_font,
+                            fill=use_fill)
+                    cur_y += class_font_size+class_top_padding
+
+            # write desciptions on every side
+            max_width_pixels = width # - 2*margin - left_padding - right_padding
+            avg_char_width = draw.textlength('n', description_font)
+            max_chars_per_line = int(max_width_pixels / avg_char_width)
+
+            log.debug(f"Forcing max characters per line")
+            max_chars_per_line = 68
+            log.debug(f"Max characters per line: {max_chars_per_line}")
+
+            if i == 0:
+                cur_y = height*0.40+2*margin+top_padding
+            else:
+                cur_y = margin+top_padding
+
+            for paragraph in page_descriptions[i]:
+                use_paragraph = paragraph.replace("<p>", "")
+                use_paragraph = use_paragraph.replace("</p>", "")
+
+                log.debug(f"Stripping bold and italics from the paragraph")
+                use_paragraph = use_paragraph.replace("<strong>", "").replace("</strong>", "").replace("<em>", "").replace("</em>", "")
+
+                wrapped_lines = textwrap.wrap(use_paragraph, width=max_chars_per_line)
+                text_to_draw = "\n".join(wrapped_lines)
+
+                draw.multiline_text(xy=(margin+left_padding, cur_y),
+                                    text=text_to_draw,
+                                    font=description_font,
+                                    fill='black')
+                cur_y += description_font_size*len(wrapped_lines) + 2*top_padding
+
+        #    random testing
         # draw.text(xy=(1080/2+25, 100),
         #            text="Hello, World!\nfoo bar",
         #            font=normal_font,
@@ -375,7 +395,7 @@ class Card:
         # )
 
         # TODO: change to save
-        img.show()
+        for img in cards_imgs: img.show()
 
 
 
@@ -733,12 +753,15 @@ class Card:
 
 
     # Construction helpers
-    def number_of_pages(self, font_size: float) -> int:
+    def number_of_pages(self, font_size: float) -> tuple[int, list[list[str]]]:
         # determine number of lines used by descriptions based on the font size
         current_line = 0
         page_num = 0
         line_limit = Card.LINE_LIMITS[str(font_size)][0]
         chars_per_line = Card.LINE_LIMITS[str(font_size)][2]
+
+        description_pages = []
+        current_page_paragraphs = []
 
         for d in self.description:
             # if we'd exceed the current limit, we need a new page
@@ -747,10 +770,19 @@ class Card:
                 page_num += 1
                 line_limit = Card.LINE_LIMITS[str(font_size)][1]
 
+                # reset the tracking
+                description_pages.append(current_page_paragraphs)
+                current_page_paragraphs = []
+                
+            current_page_paragraphs.append(d)
+
             current_line += math.ceil(len(d)/chars_per_line) + 1
+        
+        if current_page_paragraphs:
+            description_pages.append(current_page_paragraphs)
 
         # +1 due to zero index
-        return page_num + 1        
+        return page_num + 1, description_pages        
     
     def get_font_size_and_page_count(self) -> tuple[float, int]:
         """
@@ -761,7 +793,7 @@ class Card:
         max_font_with_2_pages = Card.MAX_FONT_WITH_2_PAGES
 
         for use_font_size in Card.SUPPORTED_FONT_SIZES:
-            expected_page_count = self.number_of_pages(use_font_size)
+            expected_page_count, page_descriptions = self.number_of_pages(use_font_size)
 
             if expected_page_count == 1:
                 # this font size works
@@ -773,7 +805,37 @@ class Card:
         if expected_page_count > 1 and max_font_with_2_pages != 0:
             use_font_size = max_font_with_2_pages
         
-        return use_font_size, expected_page_count
+        return use_font_size, expected_page_count, page_descriptions
+
+
+    def pil_get_font_size_and_page_count(self, supported_font_sizes: list[float]) -> tuple[float, int, list[list[str]]]:
+        """
+        :returns: The best font size, the corresponding number of pages, and the list of description paragraphs split across pages
+        """
+
+        pass
+        """pseudocode
+        avg_char_width
+        px_width_of_space
+        max_char_per_line = px_width_of_space/avg_char_width
+
+        cur_height = start_y
+        paragraphs = self.get_description()
+        for paragraph in paragraphs
+            wrapped_text = textwrap.wrap(paragraph, width=max_char_per_line)
+            height_of_text = len(wrapped_text)*font_size
+
+            if cur_height + height_of_text < allowed_height:
+                cur_height += height of text
+                add this paragraph and continue on
+            else:
+                handle page wrapping
+                update this page's line list
+                page_count += 1
+            
+        
+        return (best_font_size, num_pages, [page_1_lines, page_2_lines, ...])
+        """
 
     def get_output_location(self, docx=True) -> str:
         to_return = f'{self.output_dir}/level_{self.get_level()}'
