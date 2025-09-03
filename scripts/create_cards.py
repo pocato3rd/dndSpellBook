@@ -190,7 +190,7 @@ class Card:
 
         TODO:
             [ ] - Handle optional material component
-            [ ] - Handle multiple pages
+            [X] - Handle multiple pages
             [ ] - Handle strong/italic HTML tags
             [ ] - Handle optional blurb
             [ ] - Handle insertion of tables
@@ -210,8 +210,16 @@ class Card:
         normal_font_size = 24
         class_font_size = 20
         # description_font_size, num_pages, page_descriptions = self.get_font_size_and_page_count()
-        description_font_size, num_pages, page_descriptions = self.pil_get_font_size_and_page_count()
-        log.debug(f'Spell {self.get_name()} will have {num_pages} page(s)')
+
+        desc_y_start = height*0.40+2*margin+top_padding
+        desc_y_nth   = margin+top_padding
+
+        description_font_size, num_pages, page_descriptions = self.pil_get_font_size_and_page_count([32,30,28,24,18,14], 
+                                                                                                    start_y_first=desc_y_start, 
+                                                                                                    start_y_nth=desc_y_nth,
+                                                                                                    px_width_of_space=width,
+                                                                                                    max_height=height-margin-top_padding)
+        log.debug(f'Spell {self.get_name()} will have {num_pages} page(s) with description font size {description_font_size}')
 
         # Initialize the card image
         school_color = '#'+self.get_color() # hex
@@ -239,10 +247,17 @@ class Card:
 
             # Header details
             # spell name
-            draw.text(xy=(margin, margin),
-                    text=self.get_name(),
-                    font=title_font,
-                    fill=(255,255,255))
+            if num_pages == 1:
+                draw.text(xy=(margin, margin),
+                        text=self.get_name(),
+                        font=title_font,
+                        fill=(255,255,255))
+            else:
+                # more than one page
+                draw.text(xy=(margin, margin),
+                        text=self.get_name()+f" ({i+1}/{num_pages})",
+                        font=title_font,
+                        fill=(255,255,255))
             # spell level
             draw.text(xy=(width-margin-draw.textlength(self.get_level(), title_font), margin),
                     text=self.get_level(),
@@ -356,21 +371,21 @@ class Card:
             else:
                 cur_y = margin+top_padding
 
-            for paragraph in page_descriptions[i]:
-                use_paragraph = paragraph.replace("<p>", "")
-                use_paragraph = use_paragraph.replace("</p>", "")
+            wrapped_lines = page_descriptions[i]
 
-                log.debug(f"Stripping bold and italics from the paragraph")
-                use_paragraph = use_paragraph.replace("<strong>", "").replace("</strong>", "").replace("<em>", "").replace("</em>", "")
+            # for wrapped_lines in page_descriptions[i]:
+            #     use_paragraph = paragraph.replace("<p>", "")
+            #     use_paragraph = use_paragraph.replace("</p>", "")
 
-                wrapped_lines = textwrap.wrap(use_paragraph, width=max_chars_per_line)
-                text_to_draw = "\n".join(wrapped_lines)
+            #     log.debug(f"Stripping bold and italics from the paragraph")
+            #     use_paragraph = use_paragraph.replace("<strong>", "").replace("</strong>", "").replace("<em>", "").replace("</em>", "")
 
-                draw.multiline_text(xy=(margin+left_padding, cur_y),
-                                    text=text_to_draw,
-                                    font=description_font,
-                                    fill='black')
-                cur_y += description_font_size*len(wrapped_lines) + 2*top_padding
+            #     wrapped_lines = textwrap.wrap(use_paragraph, width=max_chars_per_line)
+            text_to_draw = "\n".join(wrapped_lines)
+            draw.multiline_text(xy=(margin+left_padding, cur_y),
+                                text=text_to_draw,
+                                font=description_font,
+                                fill='black')
 
         #    random testing
         # draw.text(xy=(1080/2+25, 100),
@@ -807,35 +822,85 @@ class Card:
         
         return use_font_size, expected_page_count, page_descriptions
 
-
-    def pil_get_font_size_and_page_count(self, supported_font_sizes: list[float]) -> tuple[float, int, list[list[str]]]:
+    def pil_get_font_size_and_page_count(self, 
+                                         supported_font_sizes: list[float], 
+                                         start_y_first: float,
+                                         start_y_nth: float,
+                                         px_width_of_space: float,
+                                         max_height: float
+        ) -> tuple[float, int, list[list[str]]]:
         """
+        Preference for the largest font that can support 1 page
+
         :returns: The best font size, the corresponding number of pages, and the list of description paragraphs split across pages
         """
+        width = 750
+        height = 1050
+        draw = ImageDraw.Draw(Image.new(mode='RGBA', size=(width, height)))
 
-        pass
-        """pseudocode
-        avg_char_width
-        px_width_of_space
-        max_char_per_line = px_width_of_space/avg_char_width
+        max_font_with_2_pages = 0
+        best_pages = [[]]
 
-        cur_height = start_y
-        paragraphs = self.get_description()
-        for paragraph in paragraphs
-            wrapped_text = textwrap.wrap(paragraph, width=max_char_per_line)
-            height_of_text = len(wrapped_text)*font_size
+        for cur_font_size in sorted(supported_font_sizes, reverse=True):
+            use_font = ImageFont.truetype("times.ttf", cur_font_size)
+            avg_char_width = draw.textlength('n', use_font)
+            max_char_per_line = px_width_of_space/avg_char_width
 
-            if cur_height + height_of_text < allowed_height:
-                cur_height += height of text
-                add this paragraph and continue on
-            else:
-                handle page wrapping
-                update this page's line list
-                page_count += 1
+            cur_height = start_y_first
+            pages = []
+            page_lines = []
+            for paragraph in self.get_description():
+                # strip formatting
+                use_paragraph = paragraph.replace('<p>','').replace('</p>','').replace('<strong>','').replace('</strong>','').replace('<em>','').replace('</em>','')
+
+                wrapped_text = textwrap.wrap(use_paragraph, width=max_char_per_line)
+                height_of_text = len(wrapped_text)*cur_font_size
+
+                if cur_height + height_of_text + cur_font_size <= max_height:
+                    # within the same page
+                    page_lines += wrapped_text
+                    page_lines += [''] # newline
+
+                    cur_height += height_of_text + cur_font_size 
+
+                else:
+                    # page overflow
+                    # leftover lines
+                    leftover_line_num = math.ceil(((cur_height+height_of_text+cur_font_size) - max_height) / cur_font_size)
+                    
+                    # add what you can to the current page
+                    if leftover_line_num > 0:
+                        page_lines += wrapped_text[:-leftover_line_num]
+                    pages.append(page_lines)
+
+                    # start the next page with the leftover lines + a newline
+                    cur_height = start_y_nth
+                    page_lines = []
+
+                    if leftover_line_num > 0:
+                        cur_height += leftover_line_num + 1
+                        page_lines += wrapped_text[-leftover_line_num:] + ['']
+
+            # capture the last paragraph
+            if page_lines:
+                pages.append(page_lines)
+                page_lines = []
             
-        
-        return (best_font_size, num_pages, [page_1_lines, page_2_lines, ...])
-        """
+            # make a determination on if this is the best font size
+            if len(pages) == 1:
+                # nice, only one page, go for it
+                return cur_font_size, len(pages), pages
+            elif len(pages) == 2:
+                if cur_font_size > max_font_with_2_pages:
+                    max_font_with_2_pages = cur_font_size
+                    best_pages = pages.copy()
+
+        if max_font_with_2_pages != 0:
+            # we found a font size that supports 2 pages, use that
+            return max_font_with_2_pages, len(best_pages), best_pages
+        else: 
+            # did not find a size that made <= 2 pages, use the smallest font
+            return cur_font_size, len(pages), pages
 
     def get_output_location(self, docx=True) -> str:
         to_return = f'{self.output_dir}/level_{self.get_level()}'
