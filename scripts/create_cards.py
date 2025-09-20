@@ -217,7 +217,7 @@ class Card:
         description_font_size, num_pages, page_descriptions = self.pil_get_font_size_and_page_count([32,30,28,24,18,14], 
                                                                                                     start_y_first=desc_y_start, 
                                                                                                     start_y_nth=desc_y_nth,
-                                                                                                    px_width_of_space=width,
+                                                                                                    px_width_of_space=width, # this feels wrong but it seems to work well
                                                                                                     max_height=height-margin-top_padding)
         log.debug(f'Spell {self.get_name()} will have {num_pages} page(s) with description font size {description_font_size}')
 
@@ -226,10 +226,9 @@ class Card:
 
         # Make the card and color the back based on the school
         cards_imgs = [Image.new(mode='RGBA', size=(width, height), color=school_color) for _ in range(num_pages)]
-        # img = Image.new(mode='RGBA', size=(width,height), color=school_color)
 
         # Create a Draw object for the img
-        # /Windows/Fonts/*.ttf
+        # e.g. /Windows/Fonts/*.ttf
         normal_font = ImageFont.truetype("times.ttf", normal_font_size)
         description_font = ImageFont.truetype("times.ttf", description_font_size)
         class_font = ImageFont.truetype("times.ttf", class_font_size)
@@ -242,7 +241,6 @@ class Card:
 
         for i, img in enumerate(cards_imgs):
             # iterate over each "side" of the card
-
             draw = ImageDraw.Draw(img)
 
             # Header details
@@ -253,7 +251,7 @@ class Card:
                         font=title_font,
                         fill=(255,255,255))
             else:
-                # more than one page
+                # more than one page so specify the order / number
                 draw.text(xy=(margin, margin),
                         text=self.get_name()+f" ({i+1}/{num_pages})",
                         font=title_font,
@@ -263,10 +261,9 @@ class Card:
                     text=self.get_level(),
                     font=title_font,
                     fill=(255,255,255))
-            
         
             if i == 0:
-                # top box
+                # header box
                 draw.rectangle(xy=(margin, 3*margin, width-margin, height*0.40), fill='white', outline=None, width=1)
                 
                 # description box
@@ -334,6 +331,13 @@ class Card:
                     cur_image = cur_image.resize((component_img_size, component_img_size))
                     img.paste(cur_image, (margin + j*int(1.1*component_img_size), int(height*0.20)), cur_image)
 
+                # (optional) material components
+                if self.material_comp is not None:
+                    component_text = self.get_material_components()
+                    # TODO: foo
+                    # bottom of header box, wrap the text
+                    # smallish/italics
+
                 # class applicability
                 cur_y = 3*margin+top_padding
                 for c in Card.CLASSES:
@@ -356,6 +360,7 @@ class Card:
                             font=use_font,
                             fill=use_fill)
                     cur_y += class_font_size+class_top_padding
+
 
             # write desciptions on every side
             max_width_pixels = width # - 2*margin - left_padding - right_padding
