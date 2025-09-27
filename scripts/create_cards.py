@@ -1,6 +1,6 @@
 import re
 import glob
-import os, pathlib, sys
+import os, pathlib, sys, re
 import math
 from io import StringIO
 
@@ -156,13 +156,22 @@ class Card:
 
         Does not handle text wrapping and is represented as HTML
         """
-        return self.description
+        # Clean up some of the HTML tags (i.e. anchor tags)
+        working_description = []
+        for paragraph in self.description:
+            working_paragraph = paragraph[:]
+            if "<a" in paragraph:
+                working_paragraph = re.sub("<a.*?>", "", working_paragraph)
+                working_paragraph = re.sub("</a>", "", working_paragraph)
+            working_description.append(working_paragraph)
+
+        return working_description
 
     def get_material_components(self) -> str:
         if self.material_comp is None:
             return ''
         else: 
-            return self.material_comp
+            return 'Component(s): ' + self.material_comp
         
     def get_blurb(self) -> str:
         if self.short_blurb is None:
@@ -189,10 +198,11 @@ class Card:
         Save the card to an image file.
 
         TODO:
-            [ ] - Handle optional material component
+            [X] - Handle optional material component
             [X] - Handle multiple pages
             [ ] - Handle strong/italic HTML tags
-            [ ] - Handle optional blurb
+                [ ] - Handle lists and list items
+            [X] - Handle optional blurb
             [ ] - Handle insertion of tables
             [ ] - Swap logging level back to info
             [ ] - Get rid of the magic numbers
@@ -207,6 +217,8 @@ class Card:
 
         component_img_size = 55
 
+        title_font_size = 48
+        blurb_font_size = 36
         normal_font_size = 24
         class_font_size = 20
         # description_font_size, num_pages, page_descriptions = self.get_font_size_and_page_count()
@@ -220,6 +232,7 @@ class Card:
                                                                                                     px_width_of_space=width, # this feels wrong but it seems to work well
                                                                                                     max_height=height-margin-top_padding)
         log.debug(f'Spell {self.get_name()} will have {num_pages} page(s) with description font size {description_font_size}')
+        component_font_size = normal_font_size
 
         # Initialize the card image
         school_color = '#'+self.get_color() # hex
@@ -236,8 +249,10 @@ class Card:
         bold_font = ImageFont.truetype("timesbd.ttf", normal_font_size)
         bold_italics_font = ImageFont.truetype("timesbi.ttf", normal_font_size)
         italics_font = ImageFont.truetype("timesi.ttf", normal_font_size)
+        component_font = ImageFont.truetype("timesi.ttf", component_font_size)
+        blurb_font = ImageFont.truetype("timesbd.ttf", blurb_font_size)
 
-        title_font = ImageFont.truetype("timesbd.ttf", 48)
+        title_font = ImageFont.truetype("timesbd.ttf", title_font_size)
 
         for i, img in enumerate(cards_imgs):
             # iterate over each "side" of the card
@@ -286,7 +301,6 @@ class Card:
                         font=normal_font,
                         fill=(0,0,0))
 
-
                 # duration
                 draw.text(xy=(margin+left_padding, 3*margin+top_padding+normal_font_size+top_padding),
                     text="Duration:",
@@ -334,9 +348,17 @@ class Card:
                 # (optional) material components
                 if self.material_comp is not None:
                     component_text = self.get_material_components()
-                    # TODO: foo
-                    # bottom of header box, wrap the text
-                    # smallish/italics
+                    avg_char_width = draw.textlength(component_text, component_font)/len(component_text)
+                    max_width_pixels = width - left_padding - right_padding - 2*margin
+                    max_chars_per_line = int(max_width_pixels / avg_char_width)
+                    wrapped_lines = textwrap.wrap(component_text, width=max_chars_per_line)
+
+                    cur_y = height*0.40 - len(wrapped_lines)*component_font_size - top_padding
+
+                    draw.multiline_text(xy=(margin+left_padding, cur_y),
+                                        text="\n".join(wrapped_lines),
+                                        font=component_font,
+                                        fill='black')
 
                 # class applicability
                 cur_y = 3*margin+top_padding
@@ -361,6 +383,13 @@ class Card:
                             fill=use_fill)
                     cur_y += class_font_size+class_top_padding
 
+                # optional blurb
+                opt_blurb = self.get_blurb()
+                if opt_blurb:
+                    draw.text(xy=(margin+left_padding, height*0.40+top_padding),
+                    text=opt_blurb,
+                    font=blurb_font,
+                    fill=(255,255,255)) # white
 
             # write desciptions on every side
             max_width_pixels = width # - 2*margin - left_padding - right_padding
@@ -374,7 +403,7 @@ class Card:
             if i == 0:
                 cur_y = height*0.40+2*margin+top_padding
             else:
-                cur_y = margin+top_padding
+                cur_y = 3*margin+top_padding
 
             wrapped_lines = page_descriptions[i]
 
@@ -857,7 +886,6 @@ class Card:
             for paragraph in self.get_description():
                 # strip formatting
                 use_paragraph = paragraph.replace('<p>','').replace('</p>','').replace('<strong>','').replace('</strong>','').replace('<em>','').replace('</em>','')
-
                 wrapped_text = textwrap.wrap(use_paragraph, width=max_char_per_line)
                 height_of_text = len(wrapped_text)*cur_font_size
 
@@ -1550,7 +1578,7 @@ if __name__ == "__main__":
     # Testing
     spells_df = parse_input_xlsx("spell_list_inputs.xlsx")
 
-    filtered_df = spells_df.iloc[19:23,:]
+    filtered_df = spells_df.iloc[568:570,:]
 
     for _, row in filtered_df.iterrows():
 
