@@ -4,6 +4,8 @@ import os, pathlib, sys, re
 import math
 from io import StringIO
 
+from html2image import Html2Image
+
 from pathlib import Path
 # add project root to path so that relative scripts can be used whenever this file is called.
 sys.path.append(str(Path(__file__).parent.parent))
@@ -70,6 +72,8 @@ class Card:
         '6.5': [20, 32, 54],
     }
 
+    TMP_EXPORT_LOCATION = Path('/tmp/dndSpellBook')
+
     def __init__(self, spell_row: pd.Series, output_dir:str="./outputs") -> None:
         self.output_dir = output_dir
 
@@ -118,6 +122,12 @@ class Card:
     # Getter methods
     def get_has_tables(self) -> bool:
         return self.has_tables
+    
+    def get_table_files(self) -> list[str]:
+        if self.get_has_tables():
+            return glob.glob(f'{ROOT_DIR}/resources/tables/{self.get_name()}_table_*.html')
+        else:
+            return []
 
     def get_name(self) -> str:
         return self.name
@@ -200,8 +210,9 @@ class Card:
         TODO:
             [X] - Handle optional material component
             [X] - Handle multiple pages
-            [ ] - Handle strong/italic HTML tags
-                [ ] - Handle lists and list items
+            [ ] - Handle HTML tags
+                [ ] - strong/italic
+                [ ] - lists and list items
             [X] - Handle optional blurb
             [ ] - Handle insertion of tables
             [ ] - Swap logging level back to info
@@ -420,6 +431,12 @@ class Card:
                                 text=text_to_draw,
                                 font=description_font,
                                 fill='black')
+        
+        if self.get_has_tables():
+            exported_tables = self.export_table_images()
+            for p in exported_tables: 
+                log.info(f'Table written to: {p}')
+                Image.open(p).show()
 
         #    random testing
         # draw.text(xy=(1080/2+25, 100),
@@ -948,7 +965,78 @@ class Card:
 
         return to_return
 
+    def export_table_images(self) -> list[str]:
+        """
+        Write the HTML table files to a PNG file so they can be drawn onto a PNG
 
+        :returns: List of paths to the exported table PNGs
+        """
+        file_list = self.get_table_files()
+        
+        log.debug(f"Exporting tables from: {file_list}")
+        image_outputs = []
+
+        from cssjson import toCSS
+
+        style_json_dict = {
+            "rules": {
+                "*": {
+                    "attr": {
+                        "font-size": "medium"
+                    }
+                },
+                "th": {
+                    "attr": {
+                        "background": "#"+self.get_color().upper(),
+                        "color": "#FFFFFF",
+                        "text-align": "left"
+                    }
+                },
+                "td": {
+                    "attr": {
+                        "background": '#FFFFFF'
+
+                    }
+                },
+                "table, th, td": {
+                    "attr": {
+                        "border": "1px solid black",
+                        "border-collapse": "collapse"
+                    }
+                },
+                "table": {
+                    "attr": {
+                        "width": "500px" #TODO: correct to not magic number
+                    }
+                },
+                "tr": {
+                    "attr": {
+                        "width": "100%",
+                    }
+                },
+                "th, td": {
+                    "attr": {
+                        "padding-left": "5px",
+                        "padding-right": "5px"
+                    }
+                }
+            }
+        }
+
+        # convert from JSON to CSS and remove some of the string artifacts that break the processing
+        css = toCSS(style_json_dict).replace(":b", ":").replace("'", "")
+        log.debug(f"CSS representation: {repr(css)}")
+
+        for file_path in file_list:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+
+            hti = Html2Image(output_path=self.TMP_EXPORT_LOCATION, disable_logging=True)
+            image_outputs += hti.screenshot(html_str=html_content, css_str=css, size=(600,600), save_as=Path(file_path).with_suffix('.png').name)
+
+        log.debug("Done!")
+
+        return image_outputs
 
 def parse_html_table_into_py(table_html: str) -> tuple[np.ndarray[bool, bool], list[str], np.ndarray[int, int], np.ndarray[int, int]]:
     """
@@ -1578,14 +1666,18 @@ if __name__ == "__main__":
     # Testing
     spells_df = parse_input_xlsx("spell_list_inputs.xlsx")
 
-    filtered_df = spells_df.iloc[568:570,:]
+    # filtered_df = spells_df.iloc[568:,:]
+    
+    filtered_df = spells_df.iloc[:90,:]
 
     for _, row in filtered_df.iterrows():
 
         newCard = Card(row, "output/test2")
 
         log.info(newCard.get_output_location(docx=False))
-        newCard.save_as_img()
+        if newCard.get_has_tables():
+            log.warning("This card has tables!")
+            newCard.save_as_img()
 
     # filtered_df = spells_df.iloc[19:65]
     # print(len(filtered_df))
