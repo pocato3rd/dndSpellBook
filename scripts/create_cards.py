@@ -5,6 +5,7 @@ import math
 from io import StringIO
 
 from html2image import Html2Image
+from cssjson import toCSS
 
 from pathlib import Path
 # add project root to path so that relative scripts can be used whenever this file is called.
@@ -66,7 +67,7 @@ class Card:
     SUPPORTED_FONT_SIZES = [8, 7, 6.5]
     MAX_FONT_WITH_2_PAGES = 0
     LINE_LIMITS = {
-        # [1st page line limit, nth page line limit, chars/line]
+        # [1st page line limit, nth page line limit, chars/line] 
         '8': [13, 26, 54],
         '7': [17, 28, 55],
         '6.5': [20, 32, 54],
@@ -217,6 +218,10 @@ class Card:
             [ ] - Handle insertion of tables
             [ ] - Swap logging level back to info
             [ ] - Get rid of the magic numbers
+
+        [X] - Swapped to using html2img so adjust the description to use that
+        [ ] - There seems to be an issue with nested list items (e.g. True Polymorph is repeating lines and also not formatted correctly)
+
         """
         width = 750
         height = 1050
@@ -242,6 +247,18 @@ class Card:
                                                                                                     start_y_nth=desc_y_nth,
                                                                                                     px_width_of_space=width, # this feels wrong but it seems to work well
                                                                                                     max_height=height-margin-top_padding)
+        desc_images = self.export_description_images(page_descriptions, description_font_size)
+        num_pages_text = num_pages
+        
+        if self.get_has_tables():
+            exported_tables = self.export_table_images()
+            num_tables = len(self.get_table_files())
+        else:
+            exported_tables = []
+            num_tables = 0
+        
+        num_pages += num_tables
+        
         log.debug(f'Spell {self.get_name()} will have {num_pages} page(s) with description font size {description_font_size}')
         component_font_size = normal_font_size
 
@@ -402,63 +419,57 @@ class Card:
                     font=blurb_font,
                     fill=(255,255,255)) # white
 
-            # write desciptions on every side
-            max_width_pixels = width # - 2*margin - left_padding - right_padding
-            avg_char_width = draw.textlength('n', description_font)
-            max_chars_per_line = int(max_width_pixels / avg_char_width)
+            if i < num_pages_text:
+                # write desciptions on every side
+                max_width_pixels = width # - 2*margin - left_padding - right_padding
+                avg_char_width = draw.textlength('n', description_font)
+                max_chars_per_line = int(max_width_pixels / avg_char_width)
 
-            log.debug(f"Forcing max characters per line")
-            max_chars_per_line = 68
-            log.debug(f"Max characters per line: {max_chars_per_line}")
+                log.debug(f"Forcing max characters per line")
+                max_chars_per_line = 68
+                log.debug(f"Max characters per line: {max_chars_per_line}")
 
-            if i == 0:
-                cur_y = height*0.40+2*margin+top_padding
-            else:
+                p = desc_images[i]
+
+                if i == 0:
+                    cur_y = int(height*0.40+2*margin+top_padding)
+                else:
+                    cur_y = int(3*margin+top_padding)
+
+                log.info(f'Table written to: {p}')
+                cur_image = Image.open(p)
+                cur_width, cur_height = cur_image.size
+                # cur_image = cur_image.resize((int(width+2*left_padding), int(cur_height*(width+2*left_padding)/cur_width)))
+
+                img.paste(cur_image, (margin, cur_y), cur_image)
+
+                # wrapped_lines = page_descriptions[i]
+
+                # # for wrapped_lines in page_descriptions[i]:
+                # #     use_paragraph = paragraph.replace("<p>", "")
+                # #     use_paragraph = use_paragraph.replace("</p>", "")
+
+                # #     log.debug(f"Stripping bold and italics from the paragraph")
+                # #     use_paragraph = use_paragraph.replace("<strong>", "").replace("</strong>", "").replace("<em>", "").replace("</em>", "")
+
+                # #     wrapped_lines = textwrap.wrap(use_paragraph, width=max_chars_per_line)
+                # text_to_draw = "\n".join(wrapped_lines)
+                # draw.multiline_text(xy=(margin+left_padding, cur_y),
+                #                     text=text_to_draw,
+                #                     font=description_font,
+                #                     fill='black')
+            elif exported_tables:
+                # there are tables
+                # TODO: instead of making each table its own card, put them on the same side if possible (based on cur_y+height of img)
+                p = exported_tables[i-num_pages_text]
+                log.info(f'Table written to: {p}')
+                cur_image = Image.open(p)
+                cur_width, cur_height = cur_image.size
+                cur_image = cur_image.resize((int(width-2*left_padding), int(cur_height*(width-2*left_padding)/cur_width)))
+
                 cur_y = 3*margin+top_padding
 
-            wrapped_lines = page_descriptions[i]
-
-            # for wrapped_lines in page_descriptions[i]:
-            #     use_paragraph = paragraph.replace("<p>", "")
-            #     use_paragraph = use_paragraph.replace("</p>", "")
-
-            #     log.debug(f"Stripping bold and italics from the paragraph")
-            #     use_paragraph = use_paragraph.replace("<strong>", "").replace("</strong>", "").replace("<em>", "").replace("</em>", "")
-
-            #     wrapped_lines = textwrap.wrap(use_paragraph, width=max_chars_per_line)
-            text_to_draw = "\n".join(wrapped_lines)
-            draw.multiline_text(xy=(margin+left_padding, cur_y),
-                                text=text_to_draw,
-                                font=description_font,
-                                fill='black')
-        
-        if self.get_has_tables():
-            exported_tables = self.export_table_images()
-            for p in exported_tables: 
-                log.info(f'Table written to: {p}')
-                Image.open(p).show()
-
-        #    random testing
-        # draw.text(xy=(1080/2+25, 100),
-        #            text="Hello, World!\nfoo bar",
-        #            font=normal_font,
-        #            fill=(0,0,0)
-        # )
-        # draw.text(xy=(1080/2+25, 150),
-        #            text="Hello, World!",
-        #            font=bold_font,
-        #            fill=(150,0,0)
-        # )
-        # draw.text(xy=(1080/2+25, 200),
-        #            text="Hello, World!",
-        #            font=italics_font,
-        #            fill=(0,150,0)
-        # )
-        # draw.text(xy=(1080/2+25, 250),
-        #            text="Hello, World!",
-        #            font=bold_italics_font,
-        #            fill=(0,0,150)
-        # )
+                img.paste(cur_image, (margin+2*left_padding, cur_y), cur_image)
 
         # TODO: change to save
         for img in cards_imgs: img.show()
@@ -902,7 +913,8 @@ class Card:
             page_lines = []
             for paragraph in self.get_description():
                 # strip formatting
-                use_paragraph = paragraph.replace('<p>','').replace('</p>','').replace('<strong>','').replace('</strong>','').replace('<em>','').replace('</em>','')
+                # use_paragraph = paragraph.replace('<p>','').replace('</p>','').replace('<strong>','').replace('</strong>','').replace('<em>','').replace('</em>','')
+                use_paragraph = paragraph[:]
                 wrapped_text = textwrap.wrap(use_paragraph, width=max_char_per_line)
                 height_of_text = len(wrapped_text)*cur_font_size
 
@@ -965,6 +977,66 @@ class Card:
 
         return to_return
 
+    
+    def export_description_images(self, descriptions: list[str], font_size: int) -> list[str]:
+        """
+        Write the HTML description "pages" ta PNG files so they auto-handle HTML tags
+
+        :param: descriptions, a list of HTML strings for the description of each card side.
+        :param: font_size, the pixel font size to use for the descriptions
+        :returns: List of paths to the exported table PNGs
+        """
+
+        width = 750
+        height = 1050
+        margin = 30
+        left_padding = 5
+        right_padding = 5
+        top_padding = 10
+        class_top_padding = 5
+
+        image_outputs = []
+        style_json_dict = {
+            "rules": {
+                "*": {
+                    "attr": {
+                        "font-size": f"{font_size}px" # TODO: correct to the right input
+                    }
+                },
+                "body": { 
+                    "attr": {
+                        "width": f"{width-2*margin-left_padding-2*right_padding}px", # TODO: unmagic
+                    }
+                },
+                "p": {
+                    "attr": {
+                        "padding-left": f"{left_padding}px", # TODO: unmagic
+                        "padding-right": f"{right_padding}px", # TODO: unmagic
+                        "margin-bottom": "0.5em",
+                        "margin-top": "0.25em"
+                    }
+                },
+                "ul, ol": {
+                    "attr": {
+                        "margin-bottom": "0.5em",
+                        "margin-top": "0.25em"
+                    }
+                }
+            }
+        }
+        # convert from JSON to CSS and remove some of the string artifacts that break the processing
+        css = toCSS(style_json_dict).replace(":b", ":").replace("'", "")
+        for i, html_content in enumerate(descriptions):
+            output_name = f"{self.get_name()}_desc_{i}.png"
+            
+            hti = Html2Image(output_path=self.TMP_EXPORT_LOCATION, disable_logging=True)
+            image_outputs += hti.screenshot(html_str="<body>"+" ".join(html_content)+"</body>", css_str=css, size=(750,1200), save_as=output_name)
+
+        log.debug("Done!")
+
+        return image_outputs
+
+    
     def export_table_images(self) -> list[str]:
         """
         Write the HTML table files to a PNG file so they can be drawn onto a PNG
@@ -975,8 +1047,6 @@ class Card:
         
         log.debug(f"Exporting tables from: {file_list}")
         image_outputs = []
-
-        from cssjson import toCSS
 
         style_json_dict = {
             "rules": {
@@ -1025,7 +1095,6 @@ class Card:
 
         # convert from JSON to CSS and remove some of the string artifacts that break the processing
         css = toCSS(style_json_dict).replace(":b", ":").replace("'", "")
-        log.debug(f"CSS representation: {repr(css)}")
 
         for file_path in file_list:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -1666,18 +1735,21 @@ if __name__ == "__main__":
     # Testing
     spells_df = parse_input_xlsx("spell_list_inputs.xlsx")
 
-    # filtered_df = spells_df.iloc[568:,:]
+    filtered_df = spells_df.iloc[568:,:]
     
-    filtered_df = spells_df.iloc[:90,:]
+    # filtered_df = spells_df.iloc[:90,:]
 
     for _, row in filtered_df.iterrows():
 
         newCard = Card(row, "output/test2")
 
         log.info(newCard.get_output_location(docx=False))
-        if newCard.get_has_tables():
-            log.warning("This card has tables!")
-            newCard.save_as_img()
+        # if newCard.get_has_tables():
+        #     log.warning("This card has tables!")
+        #     newCard.save_as_img()
+
+
+        newCard.save_as_img()
 
     # filtered_df = spells_df.iloc[19:65]
     # print(len(filtered_df))
